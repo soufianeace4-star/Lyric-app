@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: lyric-app
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: WHISPER_MODEL
+        value: base

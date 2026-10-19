@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lyric</title>
+<style>
+:root{--bg:#f6f4fb;--card:#fff;--tx:#1d1b26;--mut:#7a7690;--ac:#6d4aff;--ac2:#ece7ff;--bd:#e3dff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14121c;--card:#1e1b2b;--tx:#f0eefa;--mut:#9a96b3;--ac:#9d85ff;--ac2:#2a2545;--bd:#2e2a42}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,sans-serif}
+.w{max-width:720px;margin:auto;padding:14px}.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
+video{width:100%;max-height:34vh;border-radius:10px;background:#000}
+button,select,label.b{background:var(--ac2);color:var(--ac);border:0;border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;cursor:pointer}
+button.m{background:var(--ac);color:#fff}input[type=file]{display:none}
+.r{display:flex;gap:8px;flex-wrap:wrap}.r>*{flex:1 1 auto;text-align:center}
+#bar{height:8px;background:var(--ac2);border-radius:6px;overflow:hidden;margin-top:10px}#bar i{display:block;height:100%;width:0;background:var(--ac);transition:.3s}
+#L{max-height:46vh;overflow:auto}.l{padding:10px;border-radius:10px;cursor:pointer;opacity:.55}.l.on{opacity:1;background:var(--ac2)}
+.o{font-size:17px;font-weight:600}.tr{width:100%;border:0;border-bottom:1px dashed var(--bd);background:transparent;color:var(--ac);font:inherit;padding:3px 0}
+</style></head><body><div class="w">
+<h1>🎵 Lyric</h1>
+<div class="c"><video id="v" controls playsinline></video>
+<div class="r" style="margin-top:8px">
+<label class="b">🎬 اختر فيديو أو صوت<input type="file" id="f" accept="video/*,audio/*"></label>
+<select id="lang"><option>Arabic</option><option>English</option><option>French</option><option>Spanish</option><option>Turkish</option><option>German</option></select>
+<button class="m" id="go">ابدأ الترجمة</button></div>
+<div id="bar"><i id="p"></i></div><div id="st" style="color:var(--mut);font-size:13px;margin-top:6px"></div></div>
+<div class="c"><div id="L"></div></div>
+<div class="c r"><button id="d1" class="m">تحميل SRT ثنائي</button><button id="d2">تحميل SRT الترجمة</button><button id="d3">تحميل SRT الأصلي</button></div>
+</div><script>
+const $=i=>document.getElementById(i),v=$('v');let cues=[],act=-1;
+const p2=n=>String(n).padStart(2,'0'),fmt=s=>p2(s/3600|0)+':'+p2(s%3600/60|0)+':'+p2(s%60|0)+','+String(Math.round(s%1*1000)).padStart(3,'0');
+$('f').onchange=e=>{const f=e.target.files[0];if(f)v.src=URL.createObjectURL(f)};
+function render(){const L=$('L');L.innerHTML='';cues.forEach((c,i)=>{const d=document.createElement('div');d.className='l';d.id='l'+i;
+d.innerHTML='<div class="o" dir="auto"></div><input class="tr" dir="auto">';d.firstChild.textContent=c.t;const t=d.lastChild;t.value=c.tr;
+t.oninput=()=>c.tr=t.value;t.onclick=e=>e.stopPropagation();d.onclick=()=>v.currentTime=c.s+.01;L.appendChild(d)})}
+v.ontimeupdate=()=>{const i=cues.findIndex(c=>v.currentTime>=c.s&&v.currentTime<c.e);if(i===act)return;
+$('l'+act)?.classList.remove('on');act=i;if(i>=0){const n=$('l'+i);n.classList.add('on');$('L').scrollTo({top:n.offsetTop-$('L').offsetTop-$('L').clientHeight/2,behavior:'smooth'})}};
+$('go').onclick=async()=>{const f=$('f').files[0];if(!f)return $('st').textContent='اختر ملفاً أولاً';
+const fd=new FormData();fd.append('file',f);fd.append('lang',$('lang').value);$('st').textContent='جارٍ الرفع…';
+const {id}=await (await fetch('/api/jobs',{method:'POST',body:fd})).json();
+const t=setInterval(async()=>{const j=await (await fetch('/api/jobs/'+id)).json();$('p').style.width=j.progress+'%';
+$('st').textContent={queued:'في الانتظار',transcribing:'تفريغ الصوت…',translating:'الترجمة…',done:'اكتملت الترجمة ✓',error:'خطأ: '+j.error}[j.status];
+if(j.cues.length&&j.status!=='transcribing'){cues=j.cues;render()}
+if(j.status==='done'||j.status==='error')clearInterval(t)},2000)};
+function dl(mode){const s=cues.map((c,i)=>(i+1)+'\n'+fmt(c.s)+' --> '+fmt(c.e)+'\n'+(mode==='bi'?c.t+'\n'+c.tr:mode==='tr'?c.tr:c.t)).join('\n\n');
+const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/plain'}));a.download=mode+'.srt';a.click()}
+$('d1').onclick=()=>dl('bi');$('d2').onclick=()=>dl('tr');$('d3').onclick=()=>dl('orig');
+</script></body></html>
